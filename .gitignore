@@ -5,3 +5,7 @@ __pycache__/
 news.db
 logs/
 history_checkpoint.json
+history_debate_progress.json
+history_debates/
+history_collected.json
+history_categorized.json
