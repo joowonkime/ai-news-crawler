@@ -5,6 +5,7 @@ load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
+DISCORD_HISTORY_WEBHOOK_URL = os.getenv("DISCORD_HISTORY_WEBHOOK_URL", "")
 DB_PATH = os.path.join(os.path.dirname(__file__), "news.db")
 
 VALID_TAGS = ["신기능", "버그픽스", "성능", "브레이킹", "발표", "기타"]

@@ -4,3 +4,4 @@ __pycache__/
 .venv/
 news.db
 logs/
+history_checkpoint.json
