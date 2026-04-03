@@ -127,3 +127,23 @@ def test_build_history_embed_format():
     assert "2024-11-15" in embed["description"]
     assert "MCP 프로토콜이 출시되었습니다." in embed["description"]
     assert embed["author"]["name"] == "Hacker News"
+
+
+@patch("fetch_history.post_history_to_discord")
+@patch("fetch_history.summarize_stories")
+@patch("fetch_history.collect_all_hn_stories")
+@patch("fetch_history.load_checkpoint", return_value={})
+def test_main_full_pipeline(mock_cp, mock_collect, mock_summarize, mock_post):
+    mock_collect.return_value = [
+        {"objectID": "111", "title": "Test", "url": "https://test.com", "points": 200, "created_at": "2024-11-07T00:00:00Z"},
+    ]
+    mock_summarize.return_value = {
+        "111": {"title": "Test", "url": "https://test.com", "points": 200, "created_at": "2024-11-07T00:00:00Z", "summary": "요약", "tags": "신기능", "importance": 8, "reason": "중요"},
+    }
+
+    from fetch_history import main
+    main()
+
+    mock_collect.assert_called_once()
+    mock_summarize.assert_called_once()
+    mock_post.assert_called_once()

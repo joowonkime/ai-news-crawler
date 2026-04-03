@@ -217,3 +217,28 @@ def post_history_to_discord(
         time.sleep(delay)
 
     logger.info("Discord posting complete. %d/%d posted.", posted, total)
+
+
+def main():
+    logger.info("=== HN History Fetch 시작 ===")
+
+    logger.info("Step 1: HN Algolia API에서 수집...")
+    stories = collect_all_hn_stories()
+    logger.info("수집 완료: %d개 고유 기사", len(stories))
+
+    if not stories:
+        logger.info("수집된 기사가 없습니다.")
+        return
+
+    logger.info("Step 2: 체크포인트 로드 및 Gemini 요약...")
+    checkpoint = load_checkpoint()
+    summarized = summarize_stories(stories, checkpoint)
+
+    logger.info("Step 3: Discord history 채널에 전송...")
+    post_history_to_discord(summarized)
+
+    logger.info("=== 완료 ===")
+
+
+if __name__ == "__main__":
+    main()
