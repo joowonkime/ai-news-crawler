@@ -2,6 +2,7 @@ import json
 from unittest.mock import patch, MagicMock
 from fetch_history import search_hn, collect_all_hn_stories, KEYWORDS
 from fetch_history import load_checkpoint, save_checkpoint, summarize_stories
+from fetch_history import build_history_embed
 
 # HN Algolia API 응답 fixture
 FAKE_HN_RESPONSE = {
@@ -106,3 +107,23 @@ def test_summarize_stories_skips_checkpointed(mock_summarize):
     assert "222" in results
     assert results["111"]["summary"] == "이미 요약됨"
     assert results["222"]["summary"] == "요약"
+
+
+def test_build_history_embed_format():
+    story = {
+        "title": "Claude AI releases MCP",
+        "url": "https://example.com/mcp",
+        "points": 347,
+        "created_at": "2024-11-15T12:00:00Z",
+        "summary": "MCP 프로토콜이 출시되었습니다.",
+        "tags": "신기능",
+        "reason": "AI 도구 생태계에 큰 변화",
+    }
+    embed = build_history_embed(story)
+    assert embed["title"] == "Claude AI releases MCP"
+    assert embed["url"] == "https://example.com/mcp"
+    assert embed["color"] == 0xFF6600
+    assert "347 points" in embed["description"]
+    assert "2024-11-15" in embed["description"]
+    assert "MCP 프로토콜이 출시되었습니다." in embed["description"]
+    assert embed["author"]["name"] == "Hacker News"

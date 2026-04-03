@@ -151,3 +151,69 @@ def summarize_stories(
 
     logger.info("Summarization complete. %d new, %d skipped (checkpointed)", total - skipped, skipped)
     return results
+
+
+HN_COLOR = 0xFF6600
+
+
+def build_history_embed(story: dict) -> dict:
+    created = story.get("created_at", "")[:10]
+    points = story.get("points", 0)
+    reason = story.get("reason", "")
+    summary = story.get("summary", "")
+    tags_raw = story.get("tags", "기타")
+
+    tag_str = " ".join(f"`{t.strip()}`" for t in tags_raw.split(",") if t.strip())
+
+    description_parts = [f"\U0001f4c5 {created}  |  \U0001f53a {points} points"]
+    if reason:
+        description_parts.append(f"\n\U0001f4a1 {reason}")
+    if summary:
+        description_parts.append(f"\n{summary}")
+    if tag_str:
+        description_parts.append(f"\n{tag_str}")
+
+    description = "\n".join(description_parts)
+    if len(description) > 2048:
+        description = description[:2045] + "..."
+
+    return {
+        "author": {"name": "Hacker News"},
+        "title": story.get("title", ""),
+        "url": story.get("url", ""),
+        "description": description,
+        "color": HN_COLOR,
+        "footer": {"text": created},
+    }
+
+
+def post_history_to_discord(
+    summarized: dict,
+    webhook_url: str = DISCORD_HISTORY_WEBHOOK_URL,
+    delay: float = 1.0,
+):
+    sorted_stories = sorted(summarized.values(), key=lambda s: s.get("created_at", ""))
+    total = len(sorted_stories)
+    posted = 0
+
+    for i, story in enumerate(sorted_stories, 1):
+        embed = build_history_embed(story)
+        payload = {"embeds": [embed]}
+
+        for attempt in range(3):
+            resp = requests.post(webhook_url, json=payload, timeout=15)
+            if resp.status_code in (200, 204):
+                posted += 1
+                logger.info("[%d/%d] Posted: \"%s\"", i, total, story["title"])
+                break
+            if resp.status_code == 429:
+                retry_after = resp.json().get("retry_after", 2)
+                logger.warning("Rate limited, waiting %s seconds", retry_after)
+                time.sleep(retry_after)
+                continue
+            logger.error("Discord error %s: %s", resp.status_code, resp.text)
+            break
+
+        time.sleep(delay)
+
+    logger.info("Discord posting complete. %d/%d posted.", posted, total)
