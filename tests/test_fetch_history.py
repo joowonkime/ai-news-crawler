@@ -1,6 +1,7 @@
 import json
 from unittest.mock import patch, MagicMock
 from fetch_history import search_hn, collect_all_hn_stories, KEYWORDS
+from fetch_history import load_checkpoint, save_checkpoint, summarize_stories
 
 # HN Algolia API 응답 fixture
 FAKE_HN_RESPONSE = {
@@ -73,3 +74,35 @@ def test_collect_all_deduplicates(mock_search):
     assert len(results) == 2
     ids = {r["objectID"] for r in results}
     assert ids == {"111", "222"}
+
+
+def test_checkpoint_roundtrip(tmp_path):
+    path = str(tmp_path / "cp.json")
+    save_checkpoint(path, {"111": {"title": "Test", "summary": "요약"}})
+    loaded = load_checkpoint(path)
+    assert "111" in loaded
+    assert loaded["111"]["title"] == "Test"
+
+
+def test_checkpoint_missing_file_returns_empty(tmp_path):
+    path = str(tmp_path / "nonexistent.json")
+    loaded = load_checkpoint(path)
+    assert loaded == {}
+
+
+@patch("fetch_history.summarize")
+def test_summarize_stories_skips_checkpointed(mock_summarize):
+    mock_summarize.return_value = {"summary": "요약", "tags": "신기능", "importance": 8, "reason": "중요"}
+    stories = [
+        {"objectID": "111", "title": "Already done", "url": "https://a.com", "points": 200, "created_at": "2024-11-07T00:00:00Z"},
+        {"objectID": "222", "title": "New one", "url": "https://b.com", "points": 150, "created_at": "2024-11-19T00:00:00Z"},
+    ]
+    existing_checkpoint = {"111": {"title": "Already done", "summary": "이미 요약됨"}}
+
+    results = summarize_stories(stories, existing_checkpoint, api_key="fake-key", checkpoint_path=None, delay=0)
+    # 111은 스킵, 222만 요약 호출
+    mock_summarize.assert_called_once()
+    assert "111" in results
+    assert "222" in results
+    assert results["111"]["summary"] == "이미 요약됨"
+    assert results["222"]["summary"] == "요약"

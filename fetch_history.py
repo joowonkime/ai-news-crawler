@@ -81,3 +81,73 @@ def collect_all_hn_stories(keywords: list[str] = KEYWORDS) -> list[dict]:
         logger.info("  Found %d hits, total unique: %d", len(hits), len(all_stories))
     all_stories.sort(key=lambda h: h.get("created_at_i", 0))
     return all_stories
+
+
+def load_checkpoint(path: str = CHECKPOINT_FILE) -> dict:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def save_checkpoint(path: str, data: dict):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def summarize_stories(
+    stories: list[dict],
+    checkpoint: dict,
+    api_key: str = GEMINI_API_KEY,
+    checkpoint_path: str | None = CHECKPOINT_FILE,
+    delay: float = 2.0,
+) -> dict:
+    results = dict(checkpoint)
+    total = len(stories)
+    skipped = 0
+
+    for i, story in enumerate(stories, 1):
+        oid = story["objectID"]
+        if oid in results:
+            skipped += 1
+            continue
+
+        title = story.get("title", "")
+        url = story.get("url", "")
+        points = story.get("points", 0)
+        created_at = story.get("created_at", "")
+
+        logger.info("[%d/%d] Summarizing: \"%s\" (%d points)", i, total, title, points)
+
+        result = summarize(title, f"URL: {url}\nHacker News points: {points}", api_key)
+        if result:
+            results[oid] = {
+                "title": title,
+                "url": url,
+                "points": points,
+                "created_at": created_at,
+                "summary": result["summary"],
+                "tags": result["tags"],
+                "importance": result["importance"],
+                "reason": result.get("reason", ""),
+            }
+        else:
+            results[oid] = {
+                "title": title,
+                "url": url,
+                "points": points,
+                "created_at": created_at,
+                "summary": title,
+                "tags": "기타",
+                "importance": 0,
+                "reason": "",
+            }
+
+        if checkpoint_path:
+            save_checkpoint(checkpoint_path, results)
+
+        time.sleep(delay)
+
+    logger.info("Summarization complete. %d new, %d skipped (checkpointed)", total - skipped, skipped)
+    return results
