@@ -1,6 +1,6 @@
 import json
 from unittest.mock import patch, MagicMock
-from forum_poster import build_forum_post_body, build_debate_comment, parse_judge_tag
+from forum_poster import build_forum_post_body, build_debate_comment, build_debate_embed, parse_judge_tag
 
 
 def test_build_forum_post_body():
@@ -15,6 +15,18 @@ def test_build_forum_post_body():
     assert "1724" in body["content"]
     assert "2024-12-20" in body["content"]
     assert "https://example.com/o3" in body["content"]
+
+
+def test_build_forum_post_body_with_korean_title():
+    article = {
+        "title": "OpenAI O3 breakthrough",
+        "url": "https://example.com/o3",
+        "points": 1724,
+        "created_at": "2024-12-20T00:00:00Z",
+    }
+    body = build_forum_post_body(article, title_ko="OpenAI O3 돌파구")
+    assert body["thread_name"] == "OpenAI O3 돌파구"
+    assert "OpenAI O3 breakthrough" in body["content"]
 
 
 def test_build_forum_post_body_truncates_long_title():
@@ -38,6 +50,19 @@ def test_build_debate_comment_judge():
     content = build_debate_comment("judge", "judge", "종합 판정 내용")
     assert "[Judge 종합 판정]" in content
     assert "종합 판정 내용" in content
+
+
+def test_build_debate_embed_researcher():
+    embed = build_debate_embed(1, "researcher", "기술 분석 내용")
+    assert embed["color"] == 0x3498DB
+    assert "Researcher" in embed["author"]["name"]
+    assert embed["description"] == "기술 분석 내용"
+
+
+def test_build_debate_embed_judge():
+    embed = build_debate_embed("judge", "judge", "종합 판정")
+    assert embed["color"] == 0x9B59B6
+    assert "Judge" in embed["author"]["name"]
 
 
 def test_parse_judge_tag_extracts_category():

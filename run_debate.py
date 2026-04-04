@@ -83,14 +83,15 @@ def cmd_post():
         judge_text = debate.get("rounds", {}).get("judge", {}).get("judge", "")
         tag_name = parse_judge_tag(judge_text)
 
-        thread_id = post_full_debate(article, debate, tag_name)
+        title_ko = debate.get("title_ko", "")
+        thread_id = post_full_debate(article, debate, tag_name, title_ko=title_ko)
         if thread_id:
             update_article_status(progress, oid, status="posted", posted=True, thread_id=thread_id)
             save_progress(PROGRESS_FILE, progress)
             posted_count += 1
-            logger.info("[%d] Posted: %s", posted_count, article.get("title", "")[:50])
+            logger.info("[%d] Posted: %s", posted_count, title_ko or article.get("title", "")[:50])
         else:
-            logger.error("Failed to post: %s", article.get("title", "")[:50])
+            logger.error("Failed to post: %s", title_ko or article.get("title", "")[:50])
 
     logger.info("Posting complete. %d articles posted.", posted_count)
 
@@ -117,13 +118,14 @@ def cmd_post_one(object_id: str):
     judge_text = debate.get("rounds", {}).get("judge", {}).get("judge", "")
     tag_name = parse_judge_tag(judge_text)
 
-    thread_id = post_full_debate(article, debate, tag_name)
+    title_ko = debate.get("title_ko", "")
+    thread_id = post_full_debate(article, debate, tag_name, title_ko=title_ko)
     if thread_id:
         update_article_status(progress, object_id, status="posted", posted=True, thread_id=thread_id)
         save_progress(PROGRESS_FILE, progress)
-        logger.info("Posted: %s (thread: %s)", article.get("title", "")[:50], thread_id)
+        logger.info("Posted: %s (thread: %s)", title_ko or article.get("title", "")[:50], thread_id)
     else:
-        logger.error("Failed to post: %s", article.get("title", "")[:50])
+        logger.error("Failed to post: %s", title_ko or article.get("title", "")[:50])
 
 
 def main():
